@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCB Defect Analyzer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="brand-info">
+                    <h1>PCB Defect Analyzer</h1>
+                    <span class="status-badge" id="system-status">Active</span>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2 class="section-title">01. Source Files</h2>
+                
+                <!-- Reference Image Upload -->
+                <div class="upload-container" id="master-dropzone">
+                    <input type="file" id="master-input" accept="image/*" class="file-input">
+                    <div class="upload-placeholder">
+                        <span class="upload-title">Reference Master</span>
+                        <span class="upload-subtitle">Drag & drop or click to upload</span>
+                    </div>
+                    <img id="master-preview" class="image-preview" alt="Master Preview">
+                    <button class="remove-btn" id="remove-master">&times;</button>
+                </div>
+
+                <!-- Test Image Upload -->
+                <div class="upload-container" id="test-dropzone">
+                    <input type="file" id="test-input" accept="image/*" class="file-input">
+                    <div class="upload-placeholder">
+                        <span class="upload-title">Target Sample</span>
+                        <span class="upload-subtitle">Drag & drop or click to upload</span>
+                    </div>
+                    <img id="test-preview" class="image-preview" alt="Test Preview">
+                    <button class="remove-btn" id="remove-test">&times;</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h2 class="section-title">02. Tuning Parameters</h2>
+                
+                <!-- Threshold Slider -->
+                <div class="parameter-control">
+                    <div class="parameter-labels">
+                        <label for="threshold-slider">Anomaly Threshold</label>
+                        <span class="parameter-value" id="threshold-val">0.30</span>
+                    </div>
+                    <input type="range" id="threshold-slider" min="0.10" max="0.90" step="0.05" value="0.30" class="slider">
+                    <div class="slider-ticks">
+                        <span>High Sensitivity</span>
+                        <span>Low Sensitivity</span>
+                    </div>
+                </div>
+
+                <!-- Min Area Slider -->
+                <div class="parameter-control">
+                    <div class="parameter-labels">
+                        <label for="area-slider">Min Defect Size</label>
+                        <span class="parameter-value" id="area-val">20 px</span>
+                    </div>
+                    <input type="range" id="area-slider" min="5" max="300" step="5" value="20" class="slider">
+                    <div class="slider-ticks">
+                        <span>5px</span>
+                        <span>300px</span>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button class="btn btn-primary" id="inspect-btn" disabled>Run Analysis</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Panel -->
+        <main class="main-content">
+            <!-- Header bar -->
+            <header class="content-header">
+                <div class="header-titles">
+                    <h2>Workbench Console</h2>
+                </div>
+                <div class="header-stats" id="header-stats" style="display: none;">
+                    <div class="stat-card">
+                        <span class="stat-label">Dimensions</span>
+                        <span class="stat-value">224 &times; 224</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Latency</span>
+                        <span class="stat-value" id="latency-val">-</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Display Canvas Area -->
+            <div class="display-canvas">
+                
+                <!-- Initial State: No upload -->
+                <div class="state-container" id="state-initial">
+                    <div class="empty-graphic">
+                        <h3>Awaiting Input Files</h3>
+                        <p>Upload a Reference Master PCB and a Target Sample PCB to map layer defects.</p>
+                    </div>
+                </div>
+
+                <!-- Processing State: Scanning Animation -->
+                <div class="state-container" id="state-scanning" style="display: none;">
+                    <div class="scanning-wrapper">
+                        <div class="scanning-grids">
+                            <div class="scan-grid-item">
+                                <div class="scan-preview-box" id="scan-master-box"></div>
+                                <span class="scan-label">Reference Scan</span>
+                            </div>
+                            <div class="scan-laser-line"></div>
+                            <div class="scan-grid-item">
+                                <div class="scan-preview-box" id="scan-test-box"></div>
+                                <span class="scan-label">Target Scan</span>
+                            </div>
+                        </div>
+                        <div class="scanning-progress-info">
+                            <h3>Extracting Deep ResNet-50 Features...</h3>
+                            <p>Comparing local feature distributions across convolutional checkpoints.</p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results State -->
+                <div class="state-container" id="state-results" style="display: none;">
+                    
+                    <!-- Verdict Notification Bar -->
+                    <div class="verdict-banner" id="verdict-banner">
+                        <div class="verdict-title-section">
+                            <div class="verdict-badge" id="verdict-badge">DEFECT</div>
+                            <h3 id="verdict-text">Anomaly Detected in Target Board</h3>
+                        </div>
+                        <span class="defect-count-summary" id="defect-count-summary">3 Anomalies Highlighted</span>
+                    </div>
+
+                    <!-- Visual Comparison Grid -->
+                    <div class="results-visuals">
+                        <!-- Reference card -->
+                        <div class="visual-card">
+                            <div class="visual-header">
+                                <span>01. Reference Master</span>
+                            </div>
+                            <div class="visual-body">
+                                <img id="res-master" src="" alt="Master PCB">
+                            </div>
+                        </div>
+
+                        <!-- Test Target card -->
+                        <div class="visual-card">
+                            <div class="visual-header">
+                                <span>02. Target Sample</span>
+                            </div>
+                            <div class="visual-body">
+                                <img id="res-test" src="" alt="Test PCB">
+                            </div>
+                        </div>
+
+                        <!-- Anomaly Heatmap card -->
+                        <div class="visual-card">
+                            <div class="visual-header">
+                                <span>03. Anomaly Heatmap</span>
+                            </div>
+                            <div class="visual-body">
+                                <img id="res-heatmap" src="" alt="Anomaly Heatmap">
+                            </div>
+                        </div>
+
+                        <!-- Bounding Box Target card -->
+                        <div class="visual-card highlighted">
+                            <div class="visual-header">
+                                <span>04. Defect Highlights</span>
+                            </div>
+                            <div class="visual-body image-container">
+                                <img id="res-bbox" src="" alt="Overlaid Detections">
+                                <div class="laser-scanner-overlay"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Details Section (Anomaly Table) -->
+                    <div class="results-details">
+                        <div class="details-header">
+                            <h3>Defect Details</h3>
+                            <span class="count-badge" id="details-count">0 defects</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="defects-table">
+                                <thead>
+                                    <tr>
+                                        <th>Defect</th>
+                                        <th>Position (X, Y)</th>
+                                        <th>Dimensions</th>
+                                        <th>Area Size</th>
+                                        <th>Inspection</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="defects-list">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                            <div class="no-defects-message" id="no-defects-msg" style="display: none;">
+                                <span>Trace paths align with reference master. No anomalies found.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>
